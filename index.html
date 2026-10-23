@@ -1,0 +1,273 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ذئاب القرية</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0e1330;--card:#1a2150;--fg:#f2e6b1;--mut:#9aa3d0;--acc:#e0b84a;--bad:#e0605c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body.day{--bg:#f3e3b8;--card:#fff6da;--fg:#3b2a12;--mut:#7a6440;--acc:#b5651d}
+*{box-sizing:inherit}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.6 Tajawal,system-ui,sans-serif;min-height:100vh;transition:background .6s}
+#app{max-width:480px;margin:0 auto;padding:20px 16px 40px;text-align:center}
+h1{font-size:46px;font-weight:900;margin:10px 0 0;letter-spacing:0}h2{font-size:26px;margin:12px 0 4px}
+.mut{color:var(--mut)}i.sp{display:block;margin:14px auto;image-rendering:pixelated}i.sp canvas{image-rendering:pixelated}
+.btn,.opt{display:block;width:100%;min-height:52px;margin:10px 0;padding:10px 14px;border:2px solid var(--acc);border-radius:6px;background:var(--acc);color:#1a1405;font:700 18px Tajawal,sans-serif}
+.ghost,.opt{background:transparent;color:var(--fg)}.opt.sel{background:var(--acc);color:#1a1405}
+.btn:disabled{opacity:.4}.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);padding:8px 12px;margin:6px 0;border-radius:6px;text-align:right}
+.row span:first-child{display:flex;align-items:center;gap:8px}.row i.sp{margin:0}
+.st{display:flex;align-items:center;gap:12px}.st button{width:40px;height:40px;border:0;border-radius:4px;background:var(--acc);font:900 20px sans-serif}
+textarea{width:100%;min-height:90px;background:var(--card);color:var(--fg);border:1px solid var(--mut);border-radius:6px;padding:8px;font:inherit}
+.card{background:var(--card);border:3px solid var(--acc);border-radius:8px;padding:16px;margin:12px 0}
+.bad{color:var(--bad)}.left{text-align:right}label{display:block;text-align:right;margin:8px 0}
+.in{width:100%;min-height:48px;margin:8px 0;padding:8px 12px;background:var(--card);color:var(--fg);border:1px solid var(--mut);border-radius:6px;font:inherit;text-align:center}.cl{max-height:180px;overflow:auto;text-align:right;background:var(--card);padding:8px;border-radius:6px;margin:8px 0}
+</style></head><body><div id="app"></div>
+<script>
+const app=document.getElementById('app'),$=id=>document.getElementById(id),S={};
+let G,N,cfg=(()=>{try{return JSON.parse(localStorage.getItem('wv')||'{}')}catch(e){return{}}})();
+const save=()=>{try{localStorage.setItem('wv',JSON.stringify(cfg))}catch(e){}};
+const R={
+villager:{n:'قروي بسيط',t:'v',max:5,s:'h',c:['#6b4a2b','#f0c9a0','#7a8b5a'],d:'بلا قدرة خاصة. ناقش وصوّت لكشف الذئاب.'},
+doctor:{n:'الطبيب',t:'v',max:1,s:'h',c:['#ddd','#f0c9a0','#3fae6a'],d:'كل ليلة يحمي لاعبًا من الذئاب، ولا يحمي اللاعب نفسه ليلتين متتاليتين.'},
+sniper:{n:'القناص',t:'v',max:1,s:'h',c:['#333','#f0c9a0','#b5651d'],d:'يطلق النار على لاعب. إن أصاب ذئبًا أُقصي الذئب، وإن أصاب قرويًا أُقصي القناص والهدف معًا.'},
+elder:{n:'شيخ القرية',t:'v',max:1,s:'h',c:['#fff','#f0c9a0','#7b5ea7'],d:'له حياتان ضد الذئاب. إن أُقصي بالتصويت خرج فورًا.'},
+detective:{n:'المحقق',t:'v',max:1,s:'h',c:['#222','#f0c9a0','#4a7fc1'],d:'في الليالي الفردية يكشف انتماء لاعب. النتيجة تظهر له وحده.'},
+wolf:{n:'الذئب العادي',t:'w',max:3,s:'w',c:['#888','#ffd24a','#222'],d:'يشارك في اختيار الضحية الأساسية.'},
+father:{n:'والد الذئاب الشرير',t:'w',max:1,s:'w',c:['#a33','#ffd24a','#222'],d:'مرة واحدة في المباراة يحوّل قرويًا حيًا إلى ذئب.'},
+black:{n:'الذئب الأسود',t:'w',max:1,s:'w',c:['#2a2a33','#e33','#000'],d:'يختار ضحية ثانية، حتى يُقصى أي ذئب فيفقد هذه القدرة.'},
+dog:{n:'كلب المستذئب',t:'v',max:1,s:'w',c:['#b08850','#fff','#222'],d:'في الليلة الأولى يختار سرًا: القرية أو الذئاب.'},
+white:{n:'الذئب الأبيض',t:'x',max:1,s:'w',c:['#f4f4f4','#4af','#99a'],d:'مستقل. يقتل لاعبًا كل ليلة، ويفوز إن بقي وحده.'}};
+const TN={v:'القرية',w:'الذئاب',x:'مستقل'};
+const HM=["..aaaa..",".aaaaaa.",".abbbba.","..bbbb..","..cccc..",".cccccc.",".cc..cc.","........"],
+WM=["a......a","aa....aa","aaaaaaaa","abaaaaba","aaaaaaaa",".aaddaa.","..aaaa..","...dd..."];
+const sp=(r,px)=>`<i class="sp" data-r="${r}" data-px="${px}"></i>`;
+function show(h,f){app.innerHTML=h;scrollTo(0,0);
+ app.querySelectorAll('.sp').forEach(e=>{const d=R[e.dataset.r],m=d.s=='h'?HM:WM,c=document.createElement('canvas');c.width=c.height=8;c.style.width=c.style.height=e.dataset.px+'px';
+ const x=c.getContext('2d'),col={a:d.c[0],b:d.c[1],c:d.c[2],d:d.c[2]};
+ m.forEach((row,y)=>[...row].forEach((ch,i)=>{if(col[ch]){x.fillStyle=col[ch];x.fillRect(i,y,1,1)}}));e.style.width=e.style.height=e.dataset.px+'px';e.appendChild(c)});
+ f&&f()}
+app.addEventListener('click',e=>{const b=e.target.closest('[data-ch]');if(!b)return;const k=b.dataset.ch,v=b.dataset.v;S[k]=S[k]===v?null:v;
+ app.querySelectorAll(`[data-ch="${k}"]`).forEach(x=>x.classList.toggle('sel',x.dataset.v===S[k]))});
+const chooser=(k,o)=>{S[k]=null;return o.map(p=>`<button class="opt" data-ch="${k}" data-v="${p.id}">${p.name}</button>`).join('')};
+const sum=c=>Object.values(c).reduce((a,b)=>a+b,0),alive=()=>G.p.filter(p=>p.alive),has=r=>G.p.some(p=>p.role==r);
+const hand=(t,s,b,cb)=>show(`<h2>${t}</h2><p class="mut">${s}</p><button class="btn" id="ok">${b}</button>`,()=>$('ok').onclick=cb);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function home(){document.body.className='';show(`<h1>ذئاب القرية</h1><p class="mut">قرية غامضة، وذئاب متخفية بين أهلها.</p>${sp('wolf',112)}
+<button class="btn" id="p">مرّر الهاتف</button><button class="btn ghost" id="on">أونلاين</button><button class="btn ghost" id="r">القواعد</button>`,()=>{$('p').onclick=setup;$('r').onclick=rules;$('on').onclick=()=>window.online?window.online():alert('تعذر تحميل Firebase')})}
+function rules(){show(`<h2>القواعد</h2><div class="card left"><p>الفوز: القرية بإقصاء كل الذئاب والذئب الأبيض. الذئاب حين يتساوى عددهم مع القرية أو يزيد (والذئب الأبيض ميت). الذئب الأبيض إن بقي وحده.</p>
+<p>الأحداث المتزامنة: يُفحص أولًا الذئب الأبيض الناجي الوحيد، ثم القرية، ثم الذئاب. إن مات الجميع فالنتيجة تعادل.</p>
+<p>التصويت: صاحب أعلى الأصوات يُقصى. عند التعادل لا يُقصى أحد.</p>
+<p>الطبيب يمنع هجوم الذئاب (الأساسي والثاني) عن المحمي، ولا يوقف الذئب الأبيض. اللاعب المحوَّل يبقى بدوره لكنه ينضم للذئاب ويفقد قدرته الليلية. الذئب الأبيض يُحسب ذئبًا لدى القناص.</p></div><button class="btn" id="b">رجوع</button>`,()=>$('b').onclick=home)}
+
+function auto(n){const c={};Object.keys(R).forEach(k=>c[k]=0);
+ const wk=n<=4?1:n<=7?2:n<=10?3:4;shuffle(['wolf','wolf','wolf','father','black']).slice(0,wk).forEach(r=>c[r]++);
+ let rem=n-wk;if(n>=8){c.white=1;rem--}
+ shuffle(['doctor','sniper','detective','elder','dog']).slice(0,Math.max(0,Math.min(5,rem-1))).forEach(r=>{c[r]=1;rem--});
+ c.villager=Math.max(rem,0);return c}
+function check(c,n){const t=sum(c);if(t!=n)return `مجموع الأدوار ${t} ولا يساوي عدد اللاعبين ${n}`;
+ if(!(c.wolf+c.father+c.black+c.white))return 'أضف دورًا من الذئاب أو الذئب الأبيض';return ''}
+let names=cfg.names||'';
+function setup(){let n=cfg.n||6,c=cfg.c&&sum(cfg.c)==n?cfg.c:auto(n);
+ const draw=()=>{const err=check(c,n);
+ show(`<h2>إعداد المباراة</h2>
+ <div class="row"><span>عدد اللاعبين</span><span class="st"><button data-n="-1">−</button><b>${n}</b><button data-n="1">+</button></span></div>
+ <button class="btn ghost" id="au">توزيع تلقائي للأدوار</button>
+ ${Object.keys(R).map(k=>`<div class="row"><span>${sp(k,32)}${R[k].n}</span><span class="st"><button data-r="${k}" data-d="-1">−</button><b>${c[k]}</b><button data-r="${k}" data-d="1">+</button></span></div>`).join('')}
+ <p class="${err?'bad':'mut'}">${err||'التوزيع صالح'}</p>
+ <textarea id="nm" placeholder="أسماء اللاعبين، اسم في كل سطر (اختياري)">${names}</textarea>
+ <label><input type="checkbox" id="rv" ${cfg.rv!==false?'checked':''}> كشف دور اللاعب بعد إقصائه</label>
+ <label><input type="checkbox" id="ab" ${cfg.ab!==false?'checked':''}> السماح بالامتناع عن التصويت</label>
+ <button class="btn" id="go" ${err?'disabled':''}>ابدأ المباراة</button><button class="btn ghost" id="bk">رجوع</button>`,()=>{
+ const keep=()=>{names=$('nm').value;cfg.rv=$('rv').checked;cfg.ab=$('ab').checked;cfg.n=n;cfg.c=c;cfg.names=names;save()};
+ app.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{keep();n=Math.min(12,Math.max(3,n+ +b.dataset.n));c=auto(n);draw()});
+ app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{keep();const k=b.dataset.r;c[k]=Math.min(R[k].max,Math.max(0,c[k]+ +b.dataset.d));draw()});
+ $('au').onclick=()=>{keep();c=auto(n);draw()};$('bk').onclick=()=>{keep();home()};
+ $('go').onclick=()=>{keep();start(n,c)}})};draw()}
+
+function start(n,c){const list=[];Object.entries(c).forEach(([r,k])=>{for(let i=0;i<k;i++)list.push(r)});shuffle(list);
+ const nm=names.split('\n').map(s=>s.trim()).filter(Boolean);
+ G={p:list.map((r,i)=>({id:i,name:nm[i]||'لاعب '+(i+1),role:r,team:R[r].t,alive:1,lives:r=='elder'?2:1})),night:1,blackOn:true,fatherUsed:false,lastProt:null,rv:cfg.rv!==false,ab:cfg.ab!==false};
+ reveal(0)}
+function reveal(i){if(i>=G.p.length)return night();const p=G.p[i];
+ hand(`سلّم الهاتف إلى ${p.name}`,'لا ينظر أحد غيره إلى الشاشة',`أنا ${p.name}، أظهر دوري`,()=>{
+ const al=p.team=='w'?G.p.filter(x=>x!==p&&x.team=='w').map(x=>x.name):[];
+ show(`<div class="card">${sp(p.role,96)}<h2>${R[p.role].n}</h2><p>${R[p.role].d}</p><p class="mut">الفريق: ${TN[p.team]}</p>${al.length?`<p>رفاقك: <b>${al.join('، ')}</b></p>`:''}</div>
+ <button class="btn" id="h">إخفاء الدور وتسليم الهاتف</button>`,()=>$('h').onclick=()=>reveal(i+1))})}
+
+const PL={dog:'كلب المستذئب',wolves:'الذئاب',doctor:'الطبيب',sniper:'القناص',detective:'المحقق',white:'الذئب الأبيض'};
+function night(){document.body.className='';N={};const ph=[];
+ if(G.night==1&&has('dog'))ph.push('dog');ph.push('wolves');
+ ['doctor','sniper'].forEach(r=>has(r)&&ph.push(r));if(G.night%2&&has('detective'))ph.push('detective');if(has('white'))ph.push('white');
+ hand(`الليلة ${G.night}`,'ينام القرية كلها. أغمضوا أعينكم.','ابدأ الليل',()=>nextPh(ph,0))}
+function nextPh(ph,i){if(i>=ph.length)return resolve();const k=ph[i],done=()=>nextPh(ph,i+1);
+ hand(`يستيقظ الآن: ${PL[k]}`,k=='wolves'?'يجتمع الذئاب كلهم أمام الشاشة':'سلّم الهاتف لصاحب الدور','أنا جاهز',()=>ACT[k](done))}
+const out=done=>hand('لا قدرة متاحة','هذا الدور غير متاح الآن','متابعة',done);
+const opts=f=>alive().filter(f).map(p=>({id:p.id,name:p.name}));
+function solo(role,team,title,sub,list,ok,done,skip=true){const p=G.p.find(x=>x.role==role);
+ if(!p||!p.alive||p.team!=team)return out(done);
+ show(`<h2>${title}</h2><p class="mut">${sub}</p>${chooser('t',list(p))}<p class="bad" id="m"></p><button class="btn" id="c">تأكيد</button>`,()=>$('c').onclick=()=>{
+ const v=S.t==null?null:+S.t;if(v==null&&!skip){$('m').textContent='اختر لاعبًا';return}ok(v,p,done)})}
+const ACT={
+dog(done){solo('dog','v','اختر فريقك','سرًا: القرية أو الذئاب',()=>[{id:'v',name:'القرية'},{id:'w',name:'الذئاب'}],
+ (v,p,d)=>{S.t=null;if(S.t==null)p.team=chosenTeam;d()},done)},
+wolves(done){const ws=alive().filter(p=>p.team=='w');if(!ws.length)return out(done);
+ const fa=ws.some(p=>p.role=='father')&&!G.fatherUsed,bl=ws.some(p=>p.role=='black')&&G.blackOn,tg=opts(p=>p.team!='w');
+ show(`<h2>اجتماع الذئاب</h2><p>الحاضرون: <b>${ws.map(p=>p.name).join('، ')}</b></p><p class="mut">اتفقوا على الضحية الأساسية</p>${chooser('vi',tg)}
+ ${bl?`<p class="mut">الذئب الأسود: ضحية ثانية (اختياري)</p>${chooser('se',tg)}`:''}
+ ${fa?`<p class="mut">والد الذئاب: تحويل قروي إلى ذئب، مرة واحدة (اختياري)</p>${chooser('cv',opts(p=>p.team=='v'))}`:''}
+ <p class="bad" id="m"></p><button class="btn" id="c">تأكيد</button>`,()=>$('c').onclick=()=>{
+ if(S.vi==null){$('m').textContent='اختر الضحية الأساسية';return}
+ if(S.se!=null&&S.se==S.vi){$('m').textContent='الضحية الثانية يجب أن تختلف';return}
+ if(S.cv!=null&&S.cv==S.vi){$('m').textContent='لا يمكن تحويل الضحية الأساسية';return}
+ N.vi=+S.vi;N.se=S.se==null?null:+S.se;N.cv=S.cv==null?null:+S.cv;done()})},
+doctor(done){solo('doctor','v','الطبيب: من تحمي؟','لا يمكنك حماية نفس اللاعب ليلتين متتاليتين',()=>opts(p=>p.id!==G.lastProt),(v,p,d)=>{N.pr=v;G.lastProt=v;d()},done)},
+sniper(done){solo('sniper','v','القناص: على من تطلق؟','أو اختر لا أحد بالضغط على تأكيد',p=>opts(x=>x!==p),(v,p,d)=>{N.sh=v;d()},done)},
+detective(done){solo('detective','v','المحقق: من تحقق منه؟','',p=>opts(x=>x!==p),(v,p,d)=>{
+ if(v==null)return d();const t=G.p[v];hand(t.name,`ينتمي إلى: ${TN[t.team]}`,'فهمت، إخفاء',d)},done)},
+white(done){solo('white','x','الذئب الأبيض: من تقتل؟','',p=>opts(x=>x!==p),(v,p,d)=>{N.wh=v;d()},done)}};
+ACT.dog=function(done){const p=G.p.find(x=>x.role=='dog');if(!p||!p.alive)return out(done);
+ show(`<h2>اختر فريقك</h2><p class="mut">سرًا، ولا يتغير لاحقًا</p><button class="btn" id="a">القرية</button><button class="btn ghost" id="b">الذئاب</button>`,
+ ()=>{$('a').onclick=done;$('b').onclick=()=>{p.team='w';done()}})};
+
+function resolve(){const dead=[],kill=p=>{if(!p.alive)return;p.alive=0;dead.push(p);if(p.team=='w')G.blackOn=false};
+ [N.vi,N.se].forEach(id=>{if(id==null)return;const p=G.p[id];if(!p.alive||N.pr===id)return;if(p.role=='elder'&&p.lives>1){p.lives--;return}kill(p)});
+ if(N.sh!=null){const t=G.p[N.sh],sn=G.p.find(x=>x.role=='sniper');if(t.alive){if(t.team=='w'||t.role=='white')kill(t);else{kill(t);kill(sn)}}}
+ if(N.wh!=null)kill(G.p[N.wh]);
+ if(N.cv!=null){const t=G.p[N.cv];if(t.alive&&t.team=='v'){t.team='w';G.fatherUsed=true}}
+ day(dead)}
+function win(){const a=alive(),f=t=>a.filter(p=>p.team==t).length,v=f('v'),w=f('w'),x=f('x');
+ if(!a.length)return'draw';if(x&&a.length==1)return'x';if(!w&&!x)return'v';if(!x&&w>=v)return'w';return null}
+const info=(p)=>G.rv?`${p.name} (${R[p.role].n})`:p.name;
+function day(dead){document.body.className='day';
+ show(`<h2>طلع النهار</h2>${dead.length?`<div class="card"><p>أُقصي هذه الليلة:</p>${dead.map(p=>`<h3>${info(p)}</h3>`).join('')}</div>`:'<div class="card"><p>ليلة هادئة، لم يمت أحد.</p></div>'}
+ <button class="btn" id="c">${win()?'النتيجة':'ابدأ النقاش والتصويت'}</button>`,()=>$('c').onclick=()=>win()?end(win()):hand('النقاش','ناقشوا من تشكّون به، ثم ابدأوا التصويت','ابدأ التصويت',vote))}
+function vote(){const vs=alive(),tally={};let ab=0;
+ const nx=i=>{if(i>=vs.length)return count();const v=vs[i];
+ hand(`دور ${v.name} في التصويت`,'سلّم الهاتف له وحده','أنا جاهز',()=>show(`<h2>${v.name}: صوّتك</h2>${chooser('t',opts(p=>p!==v))}<p class="mut">${G.ab?'بدون اختيار = امتناع':''}</p><p class="bad" id="m"></p><button class="btn" id="c">تأكيد</button>`,()=>$('c').onclick=()=>{
+ if(S.t==null){if(!G.ab){$('m').textContent='اختر لاعبًا';return}ab++}else tally[S.t]=(tally[S.t]||0)+1;nx(i+1)}))};
+ const count=()=>{const e=Object.entries(tally),m=Math.max(0,...e.map(x=>x[1])),top=e.filter(x=>x[1]==m);let msg='تعادل أو امتناع: لم يُقصَ أحد.';
+ if(m>0&&top.length==1){const p=G.p[+top[0][0]];p.alive=0;if(p.team=='w')G.blackOn=false;msg=`أُقصي بالتصويت: <b>${info(p)}</b>`}
+ const w=win();show(`<h2>نتيجة التصويت</h2><div class="card"><p>${msg}</p></div><button class="btn" id="c">${w?'النتيجة':'ابدأ الليلة التالية'}</button>`,()=>$('c').onclick=()=>{if(w)end(w);else{G.night++;night()}})};
+ nx(0)}
+function end(w){document.body.className='';const t={v:'فازت القرية',w:'فازت الذئاب',x:'فاز الذئب الأبيض',draw:'تعادل: لا ناجين'}[w];
+ show(`<h1>${t}</h1>${w=='v'?sp('villager',96):w=='draw'?'':sp(w=='x'?'white':'wolf',96)}<div class="card left">${G.p.map(p=>`<div>${p.alive?'●':'○'} ${p.name}: ${R[p.role].n} (${TN[p.team]})</div>`).join('')}</div>
+ <button class="btn" id="a">مباراة جديدة</button>`,()=>$('a').onclick=setup)}
+home();
+</script><script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getDatabase,ref,set,get,update,onValue,push,query,limitToLast,onChildAdded} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+const fbApp=initializeApp({apiKey:"AIzaSyCmK8Laru9VWLZQUuLBhcec8nUv8kGwI64",authDomain:"wolves-village.firebaseapp.com",databaseURL:"https://wolves-village-default-rtdb.europe-west1.firebasedatabase.app",projectId:"wolves-village",storageBucket:"wolves-village.firebasestorage.app",messagingSenderId:"807801654413",appId:"1:807801654413:web:69994a75d4420d40b9a6c4"});
+const auth=getAuth(fbApp),db=getDatabase(fbApp);
+let me,code,isHost=false,room={},priv=null,E=null,un=[],lk='',done='',lastActs={},chatLog=[],nick='';
+try{nick=localStorage.getItem('wvn')||''}catch(e){}
+const g=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fail=e=>show(`<h2>تعذّر الاتصال</h2><p class="bad">${esc(e.code||e.message)}</p><p class="mut">تأكد من الإنترنت، ومن تفعيل الدخول المجهول، ومن نشر قواعد قاعدة البيانات.</p><button class="btn" id="b">رجوع</button>`,()=>g('b').onclick=home);
+window.online=async()=>{try{if(!auth.currentUser)await signInAnonymously(auth);me=auth.currentUser.uid;entry()}catch(e){fail(e)}};
+
+function entry(msg=''){show(`<h2>أونلاين</h2><input class="in" id="nm" maxlength="14" placeholder="اسمك" value="${esc(nick)}"><button class="btn" id="cr">إنشاء غرفة</button><input class="in" id="cd" maxlength="4" placeholder="رمز الغرفة"><button class="btn ghost" id="jn">انضمام</button><p class="bad" id="m">${msg}</p><button class="btn ghost" id="bk">رجوع</button>`,()=>{
+ const nm=()=>{nick=g('nm').value.trim();try{localStorage.setItem('wvn',nick)}catch(e){}return nick};
+ g('bk').onclick=home;
+ g('cr').onclick=async()=>{if(!nm())return entry('اكتب اسمك');code=Math.random().toString(36).slice(2,6).toUpperCase();
+  try{await set(ref(db,`rooms/${code}/host`),me);await update(ref(db,`rooms/${code}`),{state:'lobby',cfg:{rv:true},[`players/${me}`]:{name:nick}});isHost=true;enter()}catch(e){fail(e)}};
+ g('jn').onclick=async()=>{if(!nm())return entry('اكتب اسمك');code=g('cd').value.trim().toUpperCase();
+  try{const r=(await get(ref(db,`rooms/${code}`))).val();if(!r)return entry('الغرفة غير موجودة');
+   if(r.state!='lobby'&&!(r.players&&r.players[me]))return entry('المباراة بدأت بالفعل');
+   if(r.state=='lobby'&&Object.keys(r.players||{}).length>=12)return entry('الغرفة ممتلئة');
+   await set(ref(db,`rooms/${code}/players/${me}`),{name:nick});isHost=r.host==me;enter()}catch(e){fail(e)}}})}
+
+function enter(){un.forEach(f=>f());un=[];chatLog=[];lk='';done='';room={};priv=null;E=null;
+ un.push(onValue(ref(db,`rooms/${code}`),s=>{room=s.val()||{};draw()}));
+ un.push(onValue(ref(db,`priv/${code}/${me}`),s=>{priv=s.val();draw()}));
+ if(isHost)un.push(onValue(ref(db,`acts/${code}`),s=>{lastActs=s.val()||{};hostCheck()}));
+ un.push(onChildAdded(query(ref(db,`rooms/${code}/chat`),limitToLast(40)),s=>{chatLog.push(s.val());paintChat()}))}
+function paintChat(){const c=g('cl');if(c){c.innerHTML=chatLog.map(m=>`<div><b>${esc(m.name)}:</b> ${esc(m.t)}</div>`).join('');c.scrollTop=1e9}}
+function leave(){un.forEach(f=>f());un=[];set(ref(db,`rooms/${code}/players/${me}`),null).catch(()=>{});home()}
+
+function draw(){if(!room.host)return;const pub=room.pub||{};
+ const key=JSON.stringify([room.state,room.players,room.pub,room.cfg,priv,done]);if(key==lk)return;lk=key;
+ const ps=room.players||{},nm=u=>esc((ps[u]||{}).name||'?');let h='',bind=()=>{},chatOn=true;
+ if(room.state=='lobby'){const ids=Object.keys(ps);
+  h=`<h2>الغرفة ${code}</h2><p class="mut">شارك الرمز مع أصدقائك</p><div class="card left">${ids.map(u=>`<div>${nm(u)}${u==room.host?' ⭐':''}</div>`).join('')}</div>`;
+  if(isHost)h+=`<label><input type="checkbox" id="rv" ${(room.cfg||{}).rv!==false?'checked':''}> كشف الدور بعد الإقصاء</label><p class="mut">الأدوار تُوزَّع عشوائيًا (من 3 إلى 12 لاعبًا)</p><button class="btn" id="st" ${ids.length<3?'disabled':''}>ابدأ المباراة</button>`;
+  else h+='<p class="mut">بانتظار المضيف…</p>';
+  h+='<button class="btn ghost" id="lv">مغادرة</button>';
+  bind=()=>{if(isHost){g('rv').onchange=e=>set(ref(db,`rooms/${code}/cfg/rv`),e.target.checked);g('st').onclick=startGame}g('lv').onclick=leave}}
+ else if(!priv||!pub.phase){h='<p class="mut">جارٍ توزيع الأدوار…</p>';chatOn=false}
+ else{const role=priv.role,team=priv.team,alive=!!(pub.alive&&pub.alive[me]),al=priv.allies||[];
+  h=`<div class="row"><span>${sp(role,40)}${R[role].n}</span><span class="mut">${TN[team]}</span></div>`;
+  if(pub.msg)h+=`<div class="card">${pub.msg}</div>`;
+  if(priv.info)h+=`<div class="card">آخر تحقيق: ${priv.info.text}</div>`;
+  const L=f=>Object.keys(pub.alive||{}).filter(f).map(u=>({id:u,name:nm(u)})),sel=(t,k,l)=>`<p class="mut">${t}</p>${chooser(k,l)}`;
+  let ui='',sub=null,need=false;
+  if(pub.phase=='end'){h+=`<h2>${pub.win}</h2><div class="card left">${Object.values(pub.roles||{}).map(r=>`<div>${r.a?'●':'○'} ${esc(r.name)}: ${R[r.role].n} (${TN[r.team]})</div>`).join('')}</div>`}
+  else if(!alive)ui='<p class="mut">أُقصيت، تشاهد المباراة فقط.</p>';
+  else if(pub.phase=='day'){ui=`<h2>النهار ${pub.night}</h2><p class="mut">ناقشوا ثم يبدأ المضيف التصويت</p>`+(isHost?'<button class="btn" id="dv">بدء التصويت</button>':'')}
+  else if(done==pub.tag)ui='<p class="mut">تم إرسال قرارك. بانتظار البقية…</p>';
+  else if(pub.phase=='vote'){ui='<h2>التصويت</h2>'+sel('من تشك به؟ بدون اختيار = امتناع','t',L(u=>u!=me));sub=()=>({t:S.t||'-'})}
+  else if(pub.step=='dog'){if(role=='dog'){ui='<h2>اختر فريقك</h2>'+chooser('t',[{id:'v',name:'القرية'},{id:'w',name:'الذئاب'}]);sub=()=>({t:S.t});need=true}else ui='<h2>الليل</h2><p>ينام الجميع…</p>'}
+  else if(team=='w'){const o=L(u=>u!=me&&!al.includes(u));ui=`<h2>اجتماع الذئاب</h2><p>رفاقك: ${al.map(nm).join('، ')||'—'}</p>`+sel('الضحية الأساسية','t',o)+(priv.canSecond?sel('ضحية ثانية (اختياري)','s',o):'')+(priv.canConvert?sel('تحويل لاعب إلى ذئب، مرة واحدة (اختياري)','c',o):'');sub=()=>({t:S.t||null,s:S.s||null,c:S.c||null});need=true}
+  else if(role=='doctor'&&team=='v'){ui='<h2>الطبيب</h2>'+sel('من تحمي؟ (لا أحد = تخطي)','t',L(u=>u!=priv.lastProt));sub=()=>({t:S.t||null})}
+  else if(role=='sniper'&&team=='v'){ui='<h2>القناص</h2>'+sel('على من تطلق؟ (لا أحد = بدون إطلاق)','t',L(u=>u!=me));sub=()=>({t:S.t||null})}
+  else if(role=='detective'&&team=='v'&&pub.night%2){ui='<h2>المحقق</h2>'+sel('من تحقق منه؟','t',L(u=>u!=me));sub=()=>({t:S.t||null})}
+  else if(team=='x'){ui='<h2>الذئب الأبيض</h2>'+sel('من تقتل؟ (لا أحد = تخطي)','t',L(u=>u!=me));sub=()=>({t:S.t||null})}
+  else ui='<h2>الليل</h2><p>ينام الجميع… لا قدرة لك الليلة.</p>';
+  h+=ui;if(sub)h+='<p class="bad" id="m"></p><button class="btn" id="sb">تأكيد</button>';
+  if(isHost&&(pub.phase=='night'||pub.phase=='vote'))h+='<button class="btn ghost" id="fc">تخطي المنتظرين</button>';
+  chatOn=pub.phase!='night'&&(alive||pub.phase=='end');
+  bind=()=>{const b=g('sb');if(b)b.onclick=()=>{const v=sub();if(need&&!v.t){g('m').textContent='اختر لاعبًا';return}
+    set(ref(db,`acts/${code}/${me}`),{tag:pub.tag,...v}).then(()=>{done=pub.tag;draw()}).catch(fail)};
+   const dv=g('dv');if(dv)dv.onclick=()=>{E.phase='vote';E.tag=E.night+':vote';E.force=false;pushPub(null)};
+   const fc=g('fc');if(fc)fc.onclick=()=>{E.force=true;hostCheck()}}}
+ h+=chatOn?`<h3>الدردشة</h3><div id="cl" class="cl"></div><input class="in" id="ct" maxlength="200" placeholder="اكتب رسالة"><button class="btn ghost" id="cs">إرسال</button>`:(room.state=='play'&&pub.phase=='night'?'<p class="mut">الدردشة مغلقة ليلًا</p>':'');
+ show(h,()=>{bind();paintChat();const cs=g('cs');if(cs)cs.onclick=()=>{const t=g('ct').value.trim();if(!t)return;g('ct').value='';push(ref(db,`rooms/${code}/chat`),{uid:me,name:nick,t,ts:Date.now()}).catch(()=>{})}})}
+
+/* ===== محرك المضيف ===== */
+const pushPub=msg=>{const al={};E.P.forEach(p=>{if(p.alive)al[p.id]=1});if(msg!=null)E.msg=msg;
+ return set(ref(db,`rooms/${code}/pub`),{phase:E.phase,night:E.night,step:E.step||'',tag:E.tag,alive:al,msg:E.msg||'',win:E.win||'',roles:E.roles||null}).catch(fail)};
+const syncPriv=()=>{const o={};E.P.forEach(p=>{o[p.id]={role:p.role,team:p.team,allies:p.team=='w'?E.P.filter(x=>x!==p&&x.team=='w'&&x.alive).map(x=>x.id):[],
+ canSecond:p.role=='black'&&p.alive&&E.blackOn&&p.team=='w',canConvert:p.role=='father'&&p.alive&&!E.fatherUsed&&p.team=='w',lastProt:p.role=='doctor'?(E.lastProt||''):'',info:E.info[p.id]||null}});
+ return update(ref(db,`priv/${code}`),o).catch(fail)};
+async function startGame(){const ids=Object.keys(room.players),c=auto(ids.length),list=[];
+ Object.entries(c).forEach(([r,k])=>{for(let i=0;i<k;i++)list.push(r)});shuffle(list);
+ E={P:ids.map((u,i)=>({id:u,name:room.players[u].name,role:list[i],team:R[list[i]].t,alive:1,lives:list[i]=='elder'?2:1})),night:1,blackOn:true,fatherUsed:false,lastProt:null,info:{},rv:(room.cfg||{}).rv!==false,force:false,msg:''};
+ try{await syncPriv();await set(ref(db,`rooms/${code}/state`),'play');beginNight('')}catch(e){fail(e)}}
+function beginNight(msg){E.phase='night';E.force=false;E.step=(E.night==1&&E.P.some(p=>p.role=='dog'&&p.alive))?'dog':'main';E.tag=E.night+':'+E.step;return pushPub(msg)}
+function required(){const al=E.P.filter(p=>p.alive);if(E.phase=='vote')return al.map(p=>p.id);
+ if(E.step=='dog')return al.filter(p=>p.role=='dog').map(p=>p.id);
+ return al.filter(p=>p.team=='w'||p.team=='x'||(p.team=='v'&&(p.role=='doctor'||p.role=='sniper'||(p.role=='detective'&&E.night%2)))).map(p=>p.id)}
+function hostCheck(){if(!E||E.phase=='day'||E.phase=='end')return;const A=u=>{const a=lastActs[u];return a&&a.tag==E.tag?a:null};
+ if(E.phase=='night'&&E.step=='main'&&E.night%2){const d=E.P.find(p=>p.role=='detective'&&p.alive&&p.team=='v'),a=d&&A(d.id);
+  if(a&&a.t&&E.dtag!=E.tag){const t=E.P.find(p=>p.id==a.t);if(t){E.dtag=E.tag;E.info[d.id]={text:`${esc(t.name)}: ${TN[t.team]}`};set(ref(db,`priv/${code}/${d.id}/info`),E.info[d.id])}}}
+ if(!E.force&&!required().every(u=>A(u)))return;E.force=false;
+ if(E.phase=='vote')return tally(A);if(E.step=='dog')return doDog(A);return resolveNight(A)}
+function doDog(A){const p=E.P.find(x=>x.role=='dog'&&x.alive),a=p&&A(p.id);if(a&&a.t=='w')p.team='w';
+ E.step='main';E.tag=E.night+':main';syncPriv();return pushPub('')}
+function winCheck(){const a=E.P.filter(p=>p.alive),f=t=>a.filter(p=>p.team==t).length,v=f('v'),w=f('w'),x=f('x');
+ if(!a.length)return'draw';if(x&&a.length==1)return'x';if(!w&&!x)return'v';if(!x&&w>=v)return'w';return null}
+function afterDeaths(dead,lab){const msg=dead.length?`${lab}:<br>${dead.map(p=>`<b>${esc(p.name)}</b>${E.rv?` (${R[p.role].n})`:''}`).join('<br>')}`:'ليلة هادئة، لم يمت أحد.';
+ const w=winCheck();syncPriv();if(w)return endGame(w,msg);return pushPub(msg)}
+function resolveNight(A){const P=E.P,get1=id=>P.find(p=>p.id==id&&p.alive);
+ const W=P.filter(p=>p.alive&&p.team=='w'),cnt={};
+ W.forEach(p=>{const a=A(p.id),t=a&&get1(a.t);if(t&&t.team!='w')cnt[t.id]=(cnt[t.id]||0)+1});
+ const m=Math.max(0,...Object.values(cnt)),top=Object.keys(cnt).filter(k=>cnt[k]==m),vi=m?top[Math.floor(Math.random()*top.length)]:null;
+ const act=(role,team)=>{const p=P.find(x=>x.role==role&&x.alive&&x.team==team);return p&&A(p.id)?{p,a:A(p.id)}:null};
+ const bl=W.find(p=>p.role=='black'&&E.blackOn),fa=W.find(p=>p.role=='father'&&!E.fatherUsed);
+ let se=bl&&A(bl.id)?A(bl.id).s:null;se=get1(se)&&get1(se).team!='w'&&se!=vi?se:null;
+ let cv=fa&&A(fa.id)?A(fa.id).c:null;cv=get1(cv)&&get1(cv).team=='v'&&cv!=vi?cv:null;
+ const d=act('doctor','v'),s=act('sniper','v'),w=act('white','x'),pr=d&&get1(d.a.t)?d.a.t:null;E.lastProt=pr;
+ const dead=[],kill=p=>{if(p.alive){p.alive=0;dead.push(p);if(p.team=='w')E.blackOn=false}};
+ [vi,se].forEach(id=>{if(!id)return;const p=get1(id);if(!p||pr==id)return;if(p.role=='elder'&&p.lives>1){p.lives--;return}kill(p)});
+ if(s&&s.a.t){const t=get1(s.a.t);if(t&&t.id!=s.p.id){if(t.team=='w'||t.role=='white')kill(t);else{kill(t);kill(s.p)}}}
+ if(w&&w.a.t){const t=get1(w.a.t);if(t&&t.id!=w.p.id)kill(t)}
+ if(cv){const t=get1(cv);if(t&&t.team=='v'){t.team='w';E.fatherUsed=true}}
+ E.phase='day';return afterDeaths(dead,'أُقصي هذه الليلة')}
+function tally(A){const al=E.P.filter(p=>p.alive),c={};
+ al.forEach(p=>{const a=A(p.id);if(a&&a.t!='-'&&a.t!=p.id&&al.some(x=>x.id==a.t))c[a.t]=(c[a.t]||0)+1});
+ const m=Math.max(0,...Object.values(c)),top=Object.keys(c).filter(k=>c[k]==m);let msg='تعادل أو امتناع: لم يُقصَ أحد.';
+ if(m&&top.length==1){const p=E.P.find(x=>x.id==top[0]);p.alive=0;if(p.team=='w')E.blackOn=false;msg=`أُقصي بالتصويت: <b>${esc(p.name)}</b>${E.rv?` (${R[p.role].n})`:''}`}
+ const w=winCheck();syncPriv();if(w)return endGame(w,msg);E.night++;return beginNight(msg)}
+function endGame(w,msg){E.phase='end';E.win={v:'فازت القرية',w:'فازت الذئاب',x:'فاز الذئب الأبيض',draw:'تعادل: لا ناجين'}[w];
+ E.roles={};E.P.forEach(p=>E.roles[p.id]={name:p.name,role:p.role,team:p.team,a:p.alive?1:0});return pushPub(msg)}
+</script></body></html>
